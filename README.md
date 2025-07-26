@@ -4,7 +4,7 @@
 
 [![Docker Hub](https://img.shields.io/docker/pulls/polinux/ssh-ubuntu22.svg?style=for-the-badge&logo=docker&color=2496ed)](https://hub.docker.com/r/polinux/ssh-ubuntu22)
 [![GitHub Stars](https://img.shields.io/github/stars/pozgo/docker-ssh-ubuntu22.svg?style=for-the-badge&logo=github&color=yellow)](https://github.com/pozgo/docker-ssh-ubuntu22)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg?style=for-the-badge)](#-license)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg?style=for-the-badge)](LICENSE)
 [![Ubuntu](https://img.shields.io/badge/ubuntu-22.04-orange.svg?style=for-the-badge&logo=ubuntu)](https://ubuntu.com/)
 
 *A secure, feature-rich Docker container based on `polinux/ubuntu22-supervisor` that provides SSH access with configurable root password and comprehensive logging.*
@@ -22,6 +22,7 @@
 ├── 🐳 Dockerfile                           # Main container definition
 ├── 🐙 docker-compose.yml                   # Docker Compose configuration
 ├── 📖 README.md                           # This documentation
+├── 📄 LICENSE                             # MIT License file
 └── 📂 container-files/                    # Files copied to container
     ├── ⚙️  config/
     │   └── 🔧 init/
@@ -296,7 +297,11 @@ This container is built on the excellent [polinux/ubuntu22-supervisor](https://g
 
 ## 📄 License
 
-This project follows the same license as the base image.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+**Copyright (c) 2025 Przemyslaw (Ozzy) Ozgo**
+
+This project follows the same license as the base image [polinux/ubuntu22-supervisor](https://github.com/pozgo/docker-supervisor-ubuntu22).
 
 <div align="center">
 

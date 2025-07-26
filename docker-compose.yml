@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  ssh-ubuntu22:
+    image: polinux/ssh-ubuntu22
+    container_name: ssh-ubuntu22
+    ports:
+      - "2222:22"
+    environment:
+      - ROOT_PASWD=supersecurepass
+    volumes:
+      - ssh_data:/data
+    restart: unless-stopped
+    networks:
+      - ssh_network
+
+  # Example with custom password
+  ssh-custom:
+    image: polinux/ssh-ubuntu22
+    container_name: ssh-custom
+    ports:
+      - "2223:22"
+    environment:
+      - ROOT_PASWD=my-secure-password-123
+    volumes:
+      - ssh_custom_data:/data
+    restart: unless-stopped
+    networks:
+      - ssh_network
+    profiles:
+      - custom
+
+  # Example with auto-generated password
+  ssh-auto:
+    image: polinux/ssh-ubuntu22
+    container_name: ssh-auto
+    ports:
+      - "2224:22"
+    environment:
+      - ROOT_PASWD=password
+    volumes:
+      - ssh_auto_data:/data
+    restart: unless-stopped
+    networks:
+      - ssh_network
+    profiles:
+      - auto
+
+volumes:
+  ssh_data:
+  ssh_custom_data:
+  ssh_auto_data:
+
+networks:
+  ssh_network:
+    driver: bridge

@@ -1,6 +1,24 @@
 # Ubuntu 22 SSH Docker Container
 
+[![Docker Hub](https://img.shields.io/docker/pulls/polinux/ssh-ubuntu22.svg)](https://hub.docker.com/r/polinux/ssh-ubuntu22)
+[![GitHub](https://img.shields.io/github/stars/pozgo/docker-ssh-ubuntu22.svg?style=social)](https://github.com/pozgo/docker-ssh-ubuntu22)
+
 A Docker container based on `polinux/ubuntu22-supervisor` that provides SSH access with configurable root password and comprehensive logging.
+
+## Project Structure
+
+```
+├── Dockerfile                           # Main container definition
+├── docker-compose.yml                   # Docker Compose configuration
+├── README.md                           # This documentation
+├── container-files/                    # Files copied to container
+│   ├── config/
+│   │   └── init/
+│   │       └── 10-init-set-root-pass.sh # Password initialization script
+│   └── etc/
+│       └── supervisor.d/
+│           └── sshd.conf               # SSH daemon supervisor config
+```
 
 ## Features
 
@@ -12,28 +30,49 @@ A Docker container based on `polinux/ubuntu22-supervisor` that provides SSH acce
 
 ## Quick Start
 
-### Build the Image
+### Pull from Docker Hub
 
 ```bash
-docker build -t ubuntu22-ssh .
+docker pull polinux/ssh-ubuntu22
+```
+
+### Or Build Locally
+
+```bash
+git clone https://github.com/pozgo/docker-ssh-ubuntu22.git
+cd docker-ssh-ubuntu22
+docker build -t polinux/ssh-ubuntu22 .
 ```
 
 ### Run with Default Password
 
 ```bash
-docker run -d -p 2222:22 --name ssh-container ubuntu22-ssh
+docker run -d -p 2222:22 --name ssh-container polinux/ssh-ubuntu22
 ```
 
 ### Run with Custom Password
 
 ```bash
-docker run -d -p 2222:22 --name ssh-container -e ROOT_PASWD=mypassword ubuntu22-ssh
+docker run -d -p 2222:22 --name ssh-container -e ROOT_PASWD=mypassword polinux/ssh-ubuntu22
 ```
 
 ### Run with Auto-Generated Password
 
 ```bash
-docker run -d -p 2222:22 --name ssh-container -e ROOT_PASWD=password ubuntu22-ssh
+docker run -d -p 2222:22 --name ssh-container -e ROOT_PASWD=password polinux/ssh-ubuntu22
+```
+
+### Using Docker Compose
+
+```bash
+# Run the default service
+docker-compose up -d
+
+# Run with custom password
+docker-compose --profile custom up -d ssh-custom
+
+# Run with auto-generated password
+docker-compose --profile auto up -d ssh-auto
 ```
 
 ## Accessing the Container
@@ -97,9 +136,9 @@ The root password is always logged to:
 ### Development Setup
 
 ```bash
-# Build and run for development
-docker build -t ubuntu22-ssh .
-docker run -d -p 2222:22 --name dev-ssh ubuntu22-ssh
+# Pull and run for development
+docker pull polinux/ssh-ubuntu22
+docker run -d -p 2222:22 --name dev-ssh polinux/ssh-ubuntu22
 
 # Get the password
 docker logs dev-ssh | grep "Root password"
@@ -114,7 +153,7 @@ ssh root@localhost -p 2222
 # Run with secure custom password
 docker run -d -p 2222:22 --name prod-ssh \
   -e ROOT_PASWD=my-secure-password-123 \
-  ubuntu22-ssh
+  polinux/ssh-ubuntu22
 ```
 
 ### With Persistent Data Volume
@@ -123,10 +162,27 @@ docker run -d -p 2222:22 --name prod-ssh \
 # Run with persistent data volume
 docker run -d -p 2222:22 --name ssh-persistent \
   -v ssh-data:/data \
-  ubuntu22-ssh
+  polinux/ssh-ubuntu22
 
 # Access logs from volume
 docker run --rm -v ssh-data:/data alpine cat /data/logs/root-password.log
+```
+
+### Docker Compose Example
+
+```bash
+# Clone repository and use docker-compose
+git clone https://github.com/pozgo/docker-ssh-ubuntu22.git
+cd docker-ssh-ubuntu22
+
+# Run default container
+docker-compose up -d
+
+# View logs to get password
+docker-compose logs ssh-ubuntu22 | grep "Root password"
+
+# Connect via SSH
+ssh root@localhost -p 2222
 ```
 
 ## Security Notes
@@ -163,11 +219,22 @@ docker exec ssh-container cat /data/logs/root-password.log
 
 ```bash
 # Use different port mapping
-docker run -d -p 2223:22 --name ssh-container ubuntu22-ssh
+docker run -d -p 2223:22 --name ssh-container polinux/ssh-ubuntu22
 ssh root@localhost -p 2223
 ```
 
+## Docker Hub
+
+This image is available on Docker Hub at:
+- **Repository**: [polinux/ssh-ubuntu22](https://hub.docker.com/r/polinux/ssh-ubuntu22)
+- **Source Code**: [github.com/pozgo/docker-ssh-ubuntu22](https://github.com/pozgo/docker-ssh-ubuntu22)
+
 ## Contributing
+
+1. Fork the repository on [GitHub](https://github.com/pozgo/docker-ssh-ubuntu22)
+2. Create a feature branch
+3. Make your changes
+4. Submit a pull request
 
 This container is built on the excellent [polinux/ubuntu22-supervisor](https://github.com/pozgo/docker-supervisor-ubuntu22) base image.
 

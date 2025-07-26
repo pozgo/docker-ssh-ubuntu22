@@ -1,0 +1,127 @@
+name: Build, Test & Deploy Docker Image
+
+on:
+  pull_request:
+    branches: [ main, dev ]
+  release:
+    types: [ published ]
+  push:
+    branches: [ dev ]
+
+env:
+  IMAGE_NAME: polinux/ssh-ubuntu22
+  REGISTRY: docker.io
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image for testing
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          load: true
+          tags: ${{ env.IMAGE_NAME }}:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Test Docker image
+        run: |
+          # Test container starts successfully
+          docker run -d --name test-container -p 2222:22 -e ROOT_PASWD=testpassword ${{ env.IMAGE_NAME }}:test
+          sleep 10
+          
+          # Check if container is running
+          if [ "$(docker ps -q -f name=test-container)" = "" ]; then
+            echo "Container failed to start"
+            docker logs test-container
+            exit 1
+          fi
+          
+          # Test SSH service is running
+          docker exec test-container supervisorctl status sshd | grep RUNNING
+          if [ $? -ne 0 ]; then
+            echo "SSH service is not running"
+            docker exec test-container supervisorctl status
+            docker logs test-container
+            exit 1
+          fi
+          
+          # Test password was set correctly
+          docker logs test-container | grep "Root password set to"
+          if [ $? -ne 0 ]; then
+            echo "Password initialization failed"
+            docker logs test-container
+            exit 1
+          fi
+          
+          # Test SSH connectivity
+          apt-get update && apt-get install -y sshpass
+          sshpass -p testpassword ssh -o StrictHostKeyChecking=no -p 2222 root@localhost "echo 'SSH connection successful'"
+          if [ $? -ne 0 ]; then
+            echo "SSH connection test failed"
+            docker logs test-container
+            exit 1
+          fi
+          
+          echo "All tests passed!"
+          docker stop test-container
+          docker rm test-container
+
+  deploy:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Update Docker Hub description
+        uses: peter-evans/dockerhub-description@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: ${{ env.IMAGE_NAME }}
+          short-description: "Ubuntu 22 SSH Docker Container - OpenSSH server with configurable root password and comprehensive logging"
+          readme-filepath: ./README.md

@@ -23,6 +23,9 @@
 ├── 🐙 docker-compose.yml                   # Docker Compose configuration
 ├── 📖 README.md                           # This documentation
 ├── 📄 LICENSE                             # MIT License file
+├── 📂 .github/                            # GitHub configuration
+│   └── 🔄 workflows/
+│       └── 🚀 docker.yml                 # CI/CD pipeline for Docker Hub
 └── 📂 container-files/                    # Files copied to container
     ├── ⚙️  config/
     │   └── 🔧 init/

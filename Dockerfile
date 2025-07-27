@@ -1,6 +1,8 @@
 FROM polinux/ubuntu22-supervisor:latest
 
 ENV ROOT_PASWD=supersecurepass
+ENV USER=""
+ENV USER_IN_SUDO=""
 
 # Install packages with retry logic and proper cleanup
 RUN set -eux; \
@@ -13,6 +15,7 @@ RUN set -eux; \
     apt-get install -y --no-install-recommends \
         openssh-server \
         pwgen \
+        sudo \
         ca-certificates; \
     \
     # Clean up to reduce image size
@@ -33,5 +36,8 @@ RUN set -eux; \
     chmod 0755 /var/run/sshd
 
 COPY container-files /
+
+# Set execution permissions for init scripts
+RUN chmod +x /config/init/*.sh
 
 EXPOSE 22

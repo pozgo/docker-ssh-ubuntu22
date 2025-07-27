@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   ssh-ubuntu22:
     image: polinux/ssh-ubuntu22
@@ -46,10 +44,66 @@ services:
     profiles:
       - auto
 
+  # Example with user creation
+  ssh-user:
+    image: polinux/ssh-ubuntu22
+    container_name: ssh-user
+    ports:
+      - "2225:22"
+    environment:
+      - ROOT_PASWD=supersecurepass
+      - USER=developer
+    volumes:
+      - ssh_user_data:/data
+    restart: unless-stopped
+    networks:
+      - ssh_network
+    profiles:
+      - user
+
+  # Example with user creation and sudo privileges
+  ssh-sudo:
+    image: polinux/ssh-ubuntu22
+    container_name: ssh-sudo
+    ports:
+      - "2226:22"
+    environment:
+      - ROOT_PASWD=supersecurepass
+      - USER=developer
+      - USER_IN_SUDO=true
+    volumes:
+      - ssh_sudo_data:/data
+    restart: unless-stopped
+    networks:
+      - ssh_network
+    profiles:
+      - sudo
+
+  # Example with multiple users configuration (dev environment)
+  ssh-dev:
+    image: polinux/ssh-ubuntu22
+    container_name: ssh-dev
+    ports:
+      - "2227:22"
+    environment:
+      - ROOT_PASWD=password
+      - USER=devuser
+      - USER_IN_SUDO=true
+    volumes:
+      - ssh_dev_data:/data
+    restart: unless-stopped
+    networks:
+      - ssh_network
+    profiles:
+      - dev
+
 volumes:
   ssh_data:
   ssh_custom_data:
   ssh_auto_data:
+  ssh_user_data:
+  ssh_sudo_data:
+  ssh_dev_data:
 
 networks:
   ssh_network:

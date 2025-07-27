@@ -2,12 +2,12 @@
 
 # 🐳 Ubuntu 22 SSH Docker Container
 
-[![Docker Hub](https://img.shields.io/docker/pulls/polinux/ssh-ubuntu22.svg?style=for-the-badge&logo=docker&color=2496ed)](https://hub.docker.com/r/polinux/ssh-ubuntu22)
+[![Docker Hub](https://img.shields.ttestio/docker/pulls/polinux/ssh-ubuntu22.svg?style=for-the-badge&logo=docker&color=2496ed)](https://hub.docker.com/r/polinux/ssh-ubuntu22)
 [![GitHub Stars](https://img.shields.io/github/stars/pozgo/docker-ssh-ubuntu22.svg?style=for-the-badge&logo=github&color=yellow)](https://github.com/pozgo/docker-ssh-ubuntu22)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg?style=for-the-badge)](LICENSE)
 [![Ubuntu](https://img.shields.io/badge/ubuntu-22.04-orange.svg?style=for-the-badge&logo=ubuntu)](https://ubuntu.com/)
 
-*A secure, feature-rich Docker container based on `polinux/ubuntu22-supervisor` that provides SSH access with configurable root password and comprehensive logging.*
+*A secure, feature-rich Docker container based on `polinux/ubuntu22-supervisor` that provides SSH access with configurable passwords, user creation, sudo privileges, and comprehensive logging.*
 
 [🚀 Quick Start](#-quick-start) • [📖 Configuration](#configuration) • [🤝 Contributing](#-contributing) • [🐛 Issues](https://github.com/pozgo/docker-ssh-ubuntu22/issues)
 
@@ -29,7 +29,8 @@
 └── 📂 container-files/                    # Files copied to container
     ├── ⚙️  config/
     │   └── 🔧 init/
-    │       └── 🔑 10-init-set-root-pass.sh # Password initialization script
+    │       ├── 🔑 10-init-set-root-pass.sh # Root password initialization script
+    │       └── 👤 20-init-create-user.sh   # User creation and sudo setup script
     └── 📋 etc/
         └── 👥 supervisor.d/
             └── 🔐 sshd.conf               # SSH daemon supervisor config
@@ -40,9 +41,11 @@
 | Feature | Description |
 |---------|-------------|
 | 🔐 **SSH Server** | OpenSSH server pre-configured for secure root access |
+| 👤 **User Creation** | Automatically create users with custom passwords via environment variables |
+| 🔑 **Sudo Support** | Grant sudo privileges to created users with passwordless access |
 | 👥 **Supervisor Management** | Robust process management using supervisor |
-| 📝 **Password Logging** | Root password logged to both stdout and persistent file |
-| ⚙️ **Configurable Password** | Set custom password or auto-generate secure ones |
+| 📝 **Password Logging** | All passwords logged to both stdout and persistent files |
+| ⚙️ **Configurable Passwords** | Set custom passwords or auto-generate secure ones |
 | 💾 **Persistent Logs** | All logs stored in `/data/logs/` for easy access |
 | 🔄 **Auto-restart** | Services automatically restart on failure |
 | 🐳 **Docker Hub Ready** | Available as pre-built image on Docker Hub |
@@ -88,17 +91,43 @@ docker run -d -p 2222:22 --name ssh-container \
   polinux/ssh-ubuntu22
 ```
 
+### 👤 Run with User Creation
+
+```bash
+docker run -d -p 2222:22 --name ssh-container \
+  -e USER=developer \
+  polinux/ssh-ubuntu22
+```
+
+### 🔑 Run with User + Sudo Privileges
+
+```bash
+docker run -d -p 2222:22 --name ssh-container \
+  -e USER=developer \
+  -e USER_IN_SUDO=true \
+  polinux/ssh-ubuntu22
+```
+
 ### 🐙 Using Docker Compose
 
 ```bash
 # Run the default service
-docker-compose up -d
+docker compose up -d
 
 # Run with custom password profile
-docker-compose --profile custom up -d ssh-custom
+docker compose --profile custom up -d ssh-custom
 
 # Run with auto-generated password profile
-docker-compose --profile auto up -d ssh-auto
+docker compose --profile auto up -d ssh-auto
+
+# Run with user creation profile
+docker compose --profile user up -d ssh-user
+
+# Run with user + sudo privileges profile
+docker compose --profile sudo up -d ssh-sudo
+
+# Run development environment (user with sudo + auto password)
+docker compose --profile dev up -d ssh-dev
 ```
 
 ## 🔌 Accessing the Container
@@ -106,21 +135,28 @@ docker-compose --profile auto up -d ssh-auto
 ### 🔐 SSH Access
 
 ```bash
-# Connect via SSH (default password: supersecurepass)
+# Connect via SSH as root (default password: supersecurepass)
 ssh root@localhost -p 2222
+
+# Connect via SSH as created user (password from logs)
+ssh developer@localhost -p 2222
 
 # Or with custom port mapping
 ssh root@localhost -p <your-port>
+ssh developer@localhost -p <your-port>
 ```
 
-### 📋 Retrieve Root Password from Logs
+### 📋 Retrieve Passwords from Logs
 
 ```bash
-# View container logs to see the root password
-docker logs ssh-container | grep "Root password"
+# View container logs to see all passwords
+docker logs ssh-container | grep "password"
 
-# Access the password log file directly
+# Access the root password log file directly
 docker exec ssh-container cat /data/logs/root-password.log
+
+# Access the user passwords log file directly
+docker exec ssh-container cat /data/logs/user-passwords.log
 ```
 
 ## ⚙️ Configuration
@@ -130,6 +166,8 @@ docker exec ssh-container cat /data/logs/root-password.log
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `ROOT_PASWD` | `supersecurepass` | Root user password. Set to `password` to auto-generate |
+| `USER` | `""` | Username to create. If empty, no user is created |
+| `USER_IN_SUDO` | `""` | Set to `true` to grant sudo privileges to created user |
 
 ### Ports
 
@@ -141,13 +179,15 @@ docker exec ssh-container cat /data/logs/root-password.log
 
 | Path | Description |
 |------|-------------|
-| `/data/logs/` | Log files including root password log |
+| `/data/logs/` | Log files including root and user password logs |
 | `/data/conf/` | Configuration files |
 | `/data/run/` | Runtime files (PIDs, sockets) |
 
 ## 🔑 Password Management
 
-The container supports **three password modes**:
+The container supports **multiple password and user configuration modes**:
+
+### Root Password Modes
 
 | Mode | Configuration | Description |
 |------|---------------|-------------|
@@ -155,9 +195,18 @@ The container supports **three password modes**:
 | 🎯 **Custom** | `ROOT_PASWD=mypassword` | Set your own password |
 | 🎲 **Auto-Generated** | `ROOT_PASWD=password` | Random 16-character password |
 
-> 📝 **Password Logging**: The root password is always logged to:
+### User Creation Modes
+
+| Mode | Configuration | Description |
+|------|---------------|-------------|
+| 🚫 **No User** | No `USER` variable | Only root user available |
+| 👤 **Standard User** | `USER=username` | Create user with auto-generated password |
+| 🔑 **Sudo User** | `USER=username USER_IN_SUDO=true` | Create user with sudo privileges |
+
+> 📝 **Password Logging**: All passwords are logged to:
 > - Container stdout (visible in `docker logs`)
-> - `/data/logs/root-password.log` file
+> - `/data/logs/root-password.log` for root password
+> - `/data/logs/user-passwords.log` for user passwords
 
 ## 💡 Examples
 
@@ -183,6 +232,23 @@ docker run -d -p 2222:22 --name prod-ssh \
   -e ROOT_PASWD=my-secure-password-123 \
   --restart unless-stopped \
   polinux/ssh-ubuntu22
+```
+
+### 👨‍💻 Development with User Account
+
+```bash
+# Run with dedicated developer user having sudo privileges
+docker run -d -p 2222:22 --name dev-ssh \
+  -e USER=developer \
+  -e USER_IN_SUDO=true \
+  --restart unless-stopped \
+  polinux/ssh-ubuntu22
+
+# Get user password from logs
+docker logs dev-ssh | grep "User developer password"
+
+# Connect as developer user
+ssh developer@localhost -p 2222
 ```
 
 ### 💾 With Persistent Data Volume
@@ -225,7 +291,8 @@ ssh root@localhost -p 2222
 | 🧪 **Development Use** | Container configured for development/testing purposes |
 | 👤 **Root Login** | SSH permits root login for convenience |
 | 🔑 **Production Keys** | Consider using SSH keys instead of passwords for production |
-| 📝 **Password Logging** | Root password is logged in plain text for convenience |
+| 📝 **Password Logging** | All passwords are logged in plain text for convenience |
+| 🔧 **Passwordless Sudo** | Created users with sudo privileges have passwordless access |
 | 🔄 **Fresh Keys** | SSH host keys are regenerated on each build |
 
 ## 🔧 Troubleshooting
@@ -246,11 +313,15 @@ docker exec ssh-container supervisorctl restart sshd
 ### 🔍 Cannot Find Password
 
 ```bash
-# Check initialization logs
+# Check initialization logs for root password
 docker logs ssh-container | grep SSH-INIT
 
-# Check password log file directly
+# Check initialization logs for user creation
+docker logs ssh-container | grep USER-INIT
+
+# Check password log files directly
 docker exec ssh-container cat /data/logs/root-password.log
+docker exec ssh-container cat /data/logs/user-passwords.log
 
 # List all log files
 docker exec ssh-container ls -la /data/logs/
@@ -265,6 +336,22 @@ ssh root@localhost -p 2223
 
 # Or find what's using the port
 sudo lsof -i :2222
+```
+
+### 👤 User Creation Issues
+
+```bash
+# Check if user was created successfully
+docker exec ssh-container id testuser
+
+# Check sudo configuration for user
+docker exec ssh-container cat /etc/sudoers.d/testuser
+
+# Check user groups
+docker exec ssh-container groups testuser
+
+# Test sudo access
+docker exec ssh-container su - testuser -c "sudo whoami"
 ```
 
 ## 🐳 Docker Hub

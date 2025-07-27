@@ -34,6 +34,10 @@ jobs:
 
       - name: Test Docker image
         run: |
+          # Install dependencies for testing
+          apt-get update && apt-get install -y sshpass
+          
+          echo "=== Testing basic functionality ==="
           # Test container starts successfully
           docker run -d --name test-container -p 2222:22 -e ROOT_PASWD=testpassword ${{ env.IMAGE_NAME }}:test
           sleep 10
@@ -63,7 +67,6 @@ jobs:
           fi
           
           # Test SSH connectivity
-          apt-get update && apt-get install -y sshpass
           sshpass -p testpassword ssh -o StrictHostKeyChecking=no -p 2222 root@localhost "echo 'SSH connection successful'"
           if [ $? -ne 0 ]; then
             echo "SSH connection test failed"
@@ -71,9 +74,95 @@ jobs:
             exit 1
           fi
           
-          echo "All tests passed!"
+          # Clean up basic test
           docker stop test-container
           docker rm test-container
+          
+          echo "=== Testing user creation functionality ==="
+          # Test user creation
+          docker run -d --name test-user -p 2223:22 -e ROOT_PASWD=testpass -e USER=testuser ${{ env.IMAGE_NAME }}:test
+          sleep 10
+          
+          # Check if user was created
+          docker exec test-user id testuser
+          if [ $? -ne 0 ]; then
+            echo "User creation failed"
+            docker logs test-user
+            exit 1
+          fi
+          
+          # Test user password logging
+          docker logs test-user | grep "User.*password set to"
+          if [ $? -ne 0 ]; then
+            echo "User password logging failed"
+            docker logs test-user
+            exit 1
+          fi
+          
+          # Test user password file
+          docker exec test-user cat /data/logs/user-passwords.log | grep testuser
+          if [ $? -ne 0 ]; then
+            echo "User password file test failed"
+            docker logs test-user
+            exit 1
+          fi
+          
+          # Get user password for SSH test
+          USER_PASSWORD=$(docker exec test-user cat /data/logs/user-passwords.log | awk '{print $6}')
+          echo "Testing SSH with user password: $USER_PASSWORD"
+          
+          # Test SSH connectivity as user
+          sshpass -p "$USER_PASSWORD" ssh -o StrictHostKeyChecking=no -p 2223 testuser@localhost "echo 'User SSH connection successful'"
+          if [ $? -ne 0 ]; then
+            echo "User SSH connection test failed"
+            docker logs test-user
+            exit 1
+          fi
+          
+          docker stop test-user
+          docker rm test-user
+          
+          echo "=== Testing sudo functionality ==="
+          # Test user creation with sudo
+          docker run -d --name test-sudo -p 2224:22 -e ROOT_PASWD=testpass -e USER=sudouser -e USER_IN_SUDO=true ${{ env.IMAGE_NAME }}:test
+          sleep 10
+          
+          # Check if user was added to sudo group
+          docker exec test-sudo groups sudouser | grep sudo
+          if [ $? -ne 0 ]; then
+            echo "User sudo group test failed"
+            docker logs test-sudo
+            exit 1
+          fi
+          
+          # Check sudo configuration file exists
+          docker exec test-sudo cat /etc/sudoers.d/sudouser
+          if [ $? -ne 0 ]; then
+            echo "Sudo configuration file test failed"
+            docker logs test-sudo
+            exit 1
+          fi
+          
+          # Test sudo functionality
+          docker exec test-sudo su - sudouser -c "sudo whoami" | grep root
+          if [ $? -ne 0 ]; then
+            echo "Sudo functionality test failed"
+            docker logs test-sudo
+            exit 1
+          fi
+          
+          # Test sudo logs
+          docker logs test-sudo | grep "granted sudo privileges"
+          if [ $? -ne 0 ]; then
+            echo "Sudo logging test failed"
+            docker logs test-sudo
+            exit 1
+          fi
+          
+          docker stop test-sudo
+          docker rm test-sudo
+          
+          echo "=== All tests passed! ==="
 
   deploy:
     needs: build-and-test
@@ -134,5 +223,5 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
           repository: ${{ env.IMAGE_NAME }}
-          short-description: "Ubuntu 22 SSH Docker Container - OpenSSH server with configurable root password and comprehensive logging"
+          short-description: "Ubuntu 22 SSH Docker Container - OpenSSH server with configurable passwords, user creation, sudo privileges, and comprehensive logging"
           readme-filepath: ./README.md

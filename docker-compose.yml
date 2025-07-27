@@ -79,15 +79,72 @@ services:
     profiles:
       - sudo
 
+  # Example with user creation and custom password
+  ssh-user-custom:
+    image: polinux/ssh-ubuntu22
+    container_name: ssh-user-custom
+    ports:
+      - "2227:22"
+    environment:
+      - ROOT_PASWD=supersecurepass
+      - USER=developer
+      - USER_PASWD=my-user-password-123
+    volumes:
+      - ssh_user_custom_data:/data
+    restart: unless-stopped
+    networks:
+      - ssh_network
+    profiles:
+      - user-custom
+
+  # Example with user creation, custom password, and sudo privileges
+  ssh-user-sudo-custom:
+    image: polinux/ssh-ubuntu22
+    container_name: ssh-user-sudo-custom
+    ports:
+      - "2228:22"
+    environment:
+      - ROOT_PASWD=supersecurepass
+      - USER=devadmin
+      - USER_PASWD=secure-dev-password
+      - USER_IN_SUDO=true
+    volumes:
+      - ssh_user_sudo_custom_data:/data
+    restart: unless-stopped
+    networks:
+      - ssh_network
+    profiles:
+      - user-sudo-custom
+
+  # Example with user creation and auto-generated password
+  ssh-user-auto:
+    image: polinux/ssh-ubuntu22
+    container_name: ssh-user-auto
+    ports:
+      - "2229:22"
+    environment:
+      - ROOT_PASWD=supersecurepass
+      - USER=autouser
+      - USER_PASWD=password
+      - USER_IN_SUDO=true
+    volumes:
+      - ssh_user_auto_data:/data
+    restart: unless-stopped
+    networks:
+      - ssh_network
+    profiles:
+      - user-auto
+
   # Example with multiple users configuration (dev environment)
   ssh-dev:
     image: polinux/ssh-ubuntu22
     container_name: ssh-dev
     ports:
-      - "2227:22"
+      - "2230:22"
     environment:
       - ROOT_PASWD=password
       - USER=devuser
+      - USER_PASWD=password
       - USER_IN_SUDO=true
     volumes:
       - ssh_dev_data:/data
@@ -103,6 +160,9 @@ volumes:
   ssh_auto_data:
   ssh_user_data:
   ssh_sudo_data:
+  ssh_user_custom_data:
+  ssh_user_sudo_custom_data:
+  ssh_user_auto_data:
   ssh_dev_data:
 
 networks:

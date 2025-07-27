@@ -2,6 +2,7 @@ FROM polinux/ubuntu22-supervisor:latest
 
 ENV ROOT_PASWD=supersecurepass
 ENV USER=""
+ENV USER_PASWD=""
 ENV USER_IN_SUDO=""
 
 # Install packages with retry logic and proper cleanup

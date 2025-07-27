@@ -23,8 +23,23 @@ if [ -n "${USER:-}" ]; then
     # Create user with home directory
     useradd -m -s /bin/bash "${USER}"
     
-    # Generate password for user if not provided
-    USER_PASSWORD=$(pwgen -c -n -1 16)
+    # Set user password (custom, auto-generate, or default auto-generate)
+    if [ -n "${USER_PASWD:-}" ]; then
+        if [ "${USER_PASWD}" == "password" ]; then
+            # Auto-generate password when set to 'password'
+            USER_PASSWORD=$(pwgen -c -n -1 16)
+            log "Generated random password for user ${white}${bold}${USER}${reset}"
+        else
+            # Use custom password
+            USER_PASSWORD="${USER_PASWD}"
+            log "Using custom password for user ${white}${bold}${USER}${reset}"
+        fi
+    else
+        # Default: auto-generate password when USER_PASWD is empty
+        USER_PASSWORD=$(pwgen -c -n -1 16)
+        log "Generated random password for user ${white}${bold}${USER}${reset}"
+    fi
+    
     echo "${USER}:${USER_PASSWORD}" | chpasswd
     
     # Log the user password

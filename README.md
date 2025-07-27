@@ -108,6 +108,35 @@ docker run -d -p 2222:22 --name ssh-container \
   polinux/ssh-ubuntu22
 ```
 
+### 🔐 Run with User + Custom Password
+
+```bash
+docker run -d -p 2222:22 --name ssh-container \
+  -e USER=developer \
+  -e USER_PASWD=my-secure-password \
+  polinux/ssh-ubuntu22
+```
+
+### 🎯 Run with User + Custom Password + Sudo
+
+```bash
+docker run -d -p 2222:22 --name ssh-container \
+  -e USER=developer \
+  -e USER_PASWD=my-secure-password \
+  -e USER_IN_SUDO=true \
+  polinux/ssh-ubuntu22
+```
+
+### 🎲 Run with User + Auto-Generated Password
+
+```bash
+docker run -d -p 2222:22 --name ssh-container \
+  -e USER=developer \
+  -e USER_PASWD=password \
+  -e USER_IN_SUDO=true \
+  polinux/ssh-ubuntu22
+```
+
 ### 🐙 Using Docker Compose
 
 ```bash
@@ -125,6 +154,15 @@ docker compose --profile user up -d ssh-user
 
 # Run with user + sudo privileges profile
 docker compose --profile sudo up -d ssh-sudo
+
+# Run with user creation and custom password
+docker compose --profile user-custom up -d ssh-user-custom
+
+# Run with user + custom password + sudo privileges
+docker compose --profile user-sudo-custom up -d ssh-user-sudo-custom
+
+# Run with user + auto-generated password
+docker compose --profile user-auto up -d ssh-user-auto
 
 # Run development environment (user with sudo + auto password)
 docker compose --profile dev up -d ssh-dev
@@ -167,6 +205,7 @@ docker exec ssh-container cat /data/logs/user-passwords.log
 |----------|---------|-------------|
 | `ROOT_PASWD` | `supersecurepass` | Root user password. Set to `password` to auto-generate |
 | `USER` | `""` | Username to create. If empty, no user is created |
+| `USER_PASWD` | `""` | User password. Set to `password` to auto-generate, or specify custom password |
 | `USER_IN_SUDO` | `""` | Set to `true` to grant sudo privileges to created user |
 
 ### Ports
@@ -201,7 +240,10 @@ The container supports **multiple password and user configuration modes**:
 |------|---------------|-------------|
 | 🚫 **No User** | No `USER` variable | Only root user available |
 | 👤 **Standard User** | `USER=username` | Create user with auto-generated password |
+| 🔐 **Custom Password User** | `USER=username USER_PASWD=mypassword` | Create user with custom password |
+| 🎲 **Auto-Generated User** | `USER=username USER_PASWD=password` | Create user with auto-generated password |
 | 🔑 **Sudo User** | `USER=username USER_IN_SUDO=true` | Create user with sudo privileges |
+| 🔧 **Sudo + Custom Password** | `USER=username USER_PASWD=mypassword USER_IN_SUDO=true` | Create user with custom password and sudo privileges |
 
 > 📝 **Password Logging**: All passwords are logged to:
 > - Container stdout (visible in `docker logs`)
@@ -237,15 +279,34 @@ docker run -d -p 2222:22 --name prod-ssh \
 ### 👨‍💻 Development with User Account
 
 ```bash
-# Run with dedicated developer user having sudo privileges
+# Run with dedicated developer user having sudo privileges and custom password
 docker run -d -p 2222:22 --name dev-ssh \
   -e USER=developer \
+  -e USER_PASWD=my-dev-password \
+  -e USER_IN_SUDO=true \
+  --restart unless-stopped \
+  polinux/ssh-ubuntu22
+
+# Connect as developer user with known password
+ssh developer@localhost -p 2222
+```
+
+### 🎲 Development with Auto-Generated User Password
+
+```bash
+# Run with developer user having auto-generated password
+docker run -d -p 2222:22 --name dev-auto-ssh \
+  -e USER=developer \
+  -e USER_PASWD=password \
   -e USER_IN_SUDO=true \
   --restart unless-stopped \
   polinux/ssh-ubuntu22
 
 # Get user password from logs
-docker logs dev-ssh | grep "User developer password"
+docker logs dev-auto-ssh | grep "User.*password set to"
+
+# Or get from password file
+docker exec dev-auto-ssh cat /data/logs/user-passwords.log
 
 # Connect as developer user
 ssh developer@localhost -p 2222

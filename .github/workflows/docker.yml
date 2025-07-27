@@ -162,6 +162,55 @@ jobs:
           docker stop test-sudo
           docker rm test-sudo
           
+          echo "=== Testing custom user password functionality ==="
+          # Test user creation with custom password
+          docker run -d --name test-custom-pass -p 2225:22 -e ROOT_PASWD=testpass -e USER=customuser -e USER_PASWD=mycustompass123 ${{ env.IMAGE_NAME }}:test
+          sleep 10
+          
+          # Test SSH connectivity with custom password
+          sshpass -p "mycustompass123" ssh -o StrictHostKeyChecking=no -p 2225 customuser@localhost "echo 'Custom password SSH connection successful'"
+          if [ $? -ne 0 ]; then
+            echo "Custom password SSH connection test failed"
+            docker logs test-custom-pass
+            exit 1
+          fi
+          
+          # Test custom password logging
+          docker logs test-custom-pass | grep "Using custom password"
+          if [ $? -ne 0 ]; then
+            echo "Custom password logging test failed"
+            docker logs test-custom-pass
+            exit 1
+          fi
+          
+          docker stop test-custom-pass
+          docker rm test-custom-pass
+          
+          echo "=== Testing auto-generated user password with keyword ==="
+          # Test user creation with auto-generated password using 'password' keyword
+          docker run -d --name test-auto-user -p 2226:22 -e ROOT_PASWD=testpass -e USER=autouser -e USER_PASWD=password ${{ env.IMAGE_NAME }}:test
+          sleep 10
+          
+          # Test auto-generated password logging
+          docker logs test-auto-user | grep "Generated random password for user"
+          if [ $? -ne 0 ]; then
+            echo "Auto-generated user password logging test failed"
+            docker logs test-auto-user
+            exit 1
+          fi
+          
+          # Get auto-generated password and test SSH
+          AUTO_USER_PASSWORD=$(docker exec test-auto-user cat /data/logs/user-passwords.log | awk '{print $6}')
+          sshpass -p "$AUTO_USER_PASSWORD" ssh -o StrictHostKeyChecking=no -p 2226 autouser@localhost "echo 'Auto-generated user password SSH connection successful'"
+          if [ $? -ne 0 ]; then
+            echo "Auto-generated user password SSH connection test failed"
+            docker logs test-auto-user
+            exit 1
+          fi
+          
+          docker stop test-auto-user
+          docker rm test-auto-user
+          
           echo "=== All tests passed! ==="
 
   deploy:
